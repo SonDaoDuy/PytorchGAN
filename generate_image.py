@@ -9,10 +9,27 @@ import numpy as np
 import torch
 from torch import nn, optim
 from torch.autograd import Variable
-from model import single_GAN as single_model
+from model.version_2 import model_P as Model_P
 from model import transfer_GAN as transfer_block
 from utils.data_loader import data_loader
 import pdb
+
+def Generate_Image_v2(images, model_P, args):
+	if args.cuda:
+		model_P.cuda()
+	Nz = 50
+	model_P.train()
+	batch_size = images.shape[0]
+	fixed_noise = torch.FloatTensor(np.random.uniform(-1,1, (batch_size, Nz)))
+	batch_image = torch.FloatTensor(images)
+	if args.cuda:
+		batch_image = batch_image.cuda()
+		fixed_noise = fixed_noise.cuda()
+	batch_image = Variable(batch_image)
+	fixed_noise = Variable(fixed_noise)
+	_, x_f, _ = model_P(batch_image, fixed_noise)
+
+	return convert_image(x_f.data.cpu().numpy())
 
 def Generate_Image(images, P_G_model, T_model, F_G_model, args):
 	"""
@@ -87,28 +104,32 @@ def main():
 		})
 
 	#get input image
-	n = 7 # number of image show
+	n = 20 # number of image show
 	images, id_labels, Nd, channel_num = data_loader(args.data_place, args.model_type)
 	jpg_image = convert_image(images)
 	image_list = np.random.randint(0,len(images), (1,n))[0]
 
 	#create and load model param
-	P_G_model = single_model.Generator(channel_num)
-	T_model = transfer_block.Generator(320,320)
-	F_G_model = single_model.Generator(channel_num)
+	# P_G_model = single_model.Generator(channel_num)
+	# T_model = transfer_block.Generator(320,320)
+	# F_G_model = single_model.Generator(channel_num)
 
-	path_to_front_model = './snapshot/Front/2018-05-10_16-51-09/epoch1000_G.pt'
-	path_to_profile_model = './snapshot/Profile/2018-05-11_09-09-05/epoch1000_G.pt'
-	path_to_transfer_model = './snapshot/Transfer/2018-05-14_10-25-52/epoch100_G.pt'
+	# path_to_front_model = './snapshot/Front/2018-05-10_16-51-09/epoch1000_G.pt'
+	# path_to_profile_model = './snapshot/Profile/2018-05-11_09-09-05/epoch1000_G.pt'
+	# path_to_transfer_model = './snapshot/Transfer/2018-05-14_10-25-52/epoch100_G.pt'
 
-	P_G_model = torch.load(path_to_profile_model)
-	T_model = torch.load(path_to_transfer_model)
-	print(T_model)
-	F_G_model = torch.load(path_to_front_model)
+	# P_G_model = torch.load(path_to_profile_model)
+	# T_model = torch.load(path_to_transfer_model)
+	# print(T_model)
+	# F_G_model = torch.load(path_to_front_model)
+
+	model_P = Model_P.Generator(50,3)
+	path_to_model_P = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\snapshot\\Model_P\\2018-05-21_15-43-14\\epoch995_G.pt'
+	model_P = torch.load(path_to_model_P)
 
 	#gen img
-	generated_imgs = Generate_Image(images[image_list], P_G_model, T_model, F_G_model, args)
-
+	#generated_imgs = Generate_Image(images[image_list], P_G_model, T_model, F_G_model, args)
+	generated_imgs = Generate_Image_v2(images[image_list], model_P, args)
 	#show images
 	show_image(jpg_image, generated_imgs, id_labels, image_list, n)
 

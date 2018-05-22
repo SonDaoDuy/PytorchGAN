@@ -48,6 +48,32 @@ class FaceIdPoseDataset(Dataset):
 
 		return [image, ID]
 
+class FaceIdPoseDataset_v2(Dataset):
+	"""
+
+	"""
+	def __init__(self, images_profile, images_front, front_feats, IDs, transforms=None):
+		
+		self.images_profile = images_profile
+		self.images_front = images_front
+		self.front_feats = front_feats
+		self.IDs = IDs
+		self.transforms = transforms
+
+	def __len__(self):
+		return len(self.images_profile)
+
+	def __getitem__(self, idx):
+		image_profile = self.images_profile[idx]
+		image_front = self.images_front[idx]
+		front_feat = self.front_feats[idx]
+		ID = self.IDs[idx]
+		if self.transforms:
+			image_profile = self.transforms(image_profile)
+			image_front = self.transforms(image_front)
+
+		return [image_profile, image_front, front_feat, ID]
+
 class PFFeatDataset(Dataset):
 	"""
 

@@ -105,3 +105,6 @@ venv.bak/
 
 #dataset
 dataset/
+
+#model
+snapshot/

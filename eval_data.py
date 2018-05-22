@@ -8,7 +8,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.autograd import Variable
-from model import single_GAN as single_model
+from model.version_2 import model_P as Model_P
 from model import transfer_GAN as transfer_block
 from utils.data_loader import data_loader_ijba
 from utils.DataAugmentation import IJBADataset, Resize, RandomCrop
@@ -31,14 +31,14 @@ def parse_args():
 
 	return args
 
-def extract_feat(G_model, T_model, yaw_type, args):
+def extract_feat(G_model, D_model, yaw_type, args):
 
 	if args.cuda:
 		G_model.cuda()
-		T_model.cuda()
+		D_model.cuda()
 
 	G_model.eval()
-	T_model.eval()
+	D_model.eval()
 
 	infos = [ ('C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\dataset\\IJBA\\IJBA\\align_image_11', 'ijb_a_11_align_split', 'frame'),
 			('C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\dataset\\IJBA\\IJBA\\align_image_11', 'ijb_a_11_align_split', 'img'), 
@@ -70,17 +70,22 @@ def extract_feat(G_model, T_model, yaw_type, args):
 				bin_f.write(st.pack('ii', data_num, feat_dim))
 				for i, input_img in enumerate(dataloader):
 					input_img = torch.FloatTensor(input_img.float())
+					fixed_noise = torch.FloatTensor(np.random.uniform(-1,1, (input_img.size(0), 50)))
 					if args.cuda:
 						input_img = input_img.cuda()
+						fixed_noise = fixed_noise.cuda()
 
 					input_img = Variable(input_img)
+					fixed_noise = Variable(fixed_noise)
 					#get output from model
-					generated = G_model(input_img)
-					features = G_model.features
-					features = features.view(-1,320)
-					output = T_model(features)
-					output_data = output.cpu().data.numpy()
-					output_size = output.size(0)
+					# _, generated, _ = G_model(input_img, fixed_noise)
+					# output = D_model(generated)
+					# features = D_model.features
+					# output_data = features.cpu().data.numpy()
+					# output_size = features.size(0)
+					_, _, features = G_model(input_img, fixed_noise)
+					output_data = features.cpu().data.numpy()
+					output_size = features.size(0)
 					# save feat to bin file
 					for j in range(output_size):
 						bin_f.write(st.pack('f'*feat_dim, *tuple(output_data[j,:])))
@@ -91,17 +96,17 @@ def main():
 	args = parse_args()
 	
 	infos = [
-	'./snapshot/Profile/2018-05-11_09-09-05/epoch1000_G.pt',
-	'./snapshot/Transfer/2018-05-15_14-06-10/epoch100_G.pt',
+	'./snapshot/Model_P/2018-05-21_15-43-14/epoch1000_G.pt',
+	'./snapshot/Model_P/2018-05-21_15-43-14/epoch1000_D.pt',
 	'nonli'
 	]
 
-	G_model_path, T_model_path, yaw_type = infos
-	G_model = single_model.Generator(3)
-	T_model = transfer_block.Generator(320,320)
+	G_model_path, D_model_path, yaw_type = infos
+	G_model = Model_P.Generator(50,3)
+	D_model = Model_P.Discriminator(500,3)
 	G_model = torch.load(G_model_path)
-	T_model = torch.load(T_model_path)
-	extract_feat(G_model, T_model, yaw_type, args)
+	D_model = torch.load(D_model_path)
+	extract_feat(G_model, D_model, yaw_type, args)
 
 	test_recog()
 	test_verify()

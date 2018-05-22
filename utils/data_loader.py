@@ -106,6 +106,41 @@ class CaffeCrop(object):
 		res_img = mid_img.resize( (final_width, final_height) )
 		return res_img
 
+def make_pair_data(images_p, images_f, protocol_dir, pair_type):
+	split_num = 10
+	final_images_p, final_images_f = [], []
+
+	for split_id in range(split_num):
+		split_name = str(split_id + 1)
+		if len(split_name) < 2:
+			split_name = '0' + split_name
+		query_folder = os.path.join(protocol_dir, pair_type, split_name)
+		pair_front_img, pair_profile_img = \
+		load_image_pair(query_folder, images_f, images_p)
+
+		for j in range(len(pair_front_img)):
+			final_images_p.append(pair_profile_img[j])
+			final_images_f.append(pair_front_img[j])
+
+	final_images_p, final_images_f = np.array(final_images_p), np.array(final_images_f)
+
+	return final_images_p, final_images_f
+
+def load_image_pair(query_folder, images_f, images_p):
+	pair_front_img = []
+	pair_profile_img = []
+
+	pair_file = 'same.txt'
+	full_pair_file = os.path.join(query_folder, pair_file)
+	with open(full_pair_file, 'r') as in_f:
+		for line in in_f:
+			record = line.strip().split(',')
+			pair1, pair2 = int(record[0]), int(record[1])
+			pair_front_img.append(images_f[pair1 - 1])
+			pair_profile_img.append(images_p[pair2 - 1])
+
+	return pair_front_img, pair_profile_img
+
 def data_loader_ijba(data_place, img_list_file):
 	imgs = []
 	caffe_crop = CaffeCrop('test')
