@@ -16,6 +16,7 @@ from utils.is_D_strong import is_D_strong
 from utils.log_learning import log_learning
 from utils.convert_image import convert_image
 from utils.DataAugmentation import FaceIdPoseDataset_v2, Resize, RandomCrop
+from matplotlib import pylab
 
 def train_model_P(images_profile, images_front, frontal_feats, id_labels, Nd, Nz, D_model, G_model, args):
 	if args.cuda:
@@ -37,6 +38,7 @@ def train_model_P(images_profile, images_front, frontal_feats, id_labels, Nd, Nz
 	
 	loss_criterion_emb = nn.CosineEmbeddingLoss()
 	loss_criterion_sim = nn.MSELoss()
+	#loss_criterion_sim = nn.L1Loss()
 	loss_criterion_id = nn.CrossEntropyLoss()
 	loss_criterion_gan = nn.BCEWithLogitsLoss()
 
@@ -102,14 +104,49 @@ def train_model_P(images_profile, images_front, frontal_feats, id_labels, Nd, Nz
 			torch.save(G_model, save_path_G)
 
 			#save gen image
-			save_generated_image = convert_image(gen_frontal_img[0].cpu().data.numpy())
-			save_front_image = convert_image(batch_image_front[0].cpu().data.numpy())
-			save_path_gen_image = os.path.join(args.save_dir, 'epoch{}_generatedimage.jpg'.format(epoch))
-			save_path_image = os.path.join(args.save_dir, 'epoch{}_frontimage.jpg'.format(epoch))
-			misc.imsave(save_path_gen_image, save_generated_image.astype(np.uint8))
-			misc.imsave(save_path_image, save_front_image.astype(np.uint8))
+			save_generated_image = convert_image(gen_frontal_img.cpu().data.numpy())
+			save_front_image = convert_image(batch_image_front.cpu().data.numpy())
+			save_profile_image = convert_image(batch_image_profile.cpu().data.numpy())
+			save_path_gen_image = os.path.join(args.save_dir, 'epoch{}_generatedimage.png'.format(epoch))
+			save_path_image = os.path.join(args.save_dir, 'epoch{}_frontimage.png'.format(epoch))
+			save_path_profile = os.path.join(args.save_dir, 'epoch{}_profileimage.png'.format(epoch))
+			# misc.imsave(save_path_gen_image, save_generated_image.astype(np.uint8))
+			# misc.imsave(save_path_image, save_front_image.astype(np.uint8))
+			save_image(save_front_image, save_generated_image, save_profile_image, save_path_image, save_path_gen_image, save_path_profile)
 
-	
+def save_image(save_front_image, generated_image, save_profile_image, save_img_path, save_gen_img_path, save_path_profile):
+	r, c = 2, 7
+	G_imgs = save_front_image
+	print(len(G_imgs))
+	fig, axs = pylab.subplots(r, c)
+	cnt = 0
+	for i in range(r):
+		for j in range(c):
+			axs[i,j].imshow(G_imgs[cnt])
+			axs[i,j].axis('off')
+			cnt += 1
+	fig.savefig(save_img_path)
+
+	fig, axs = pylab.subplots(r, c)
+	cnt = 0
+	for i in range(r):
+		for j in range(c):
+			axs[i,j].imshow(save_profile_image[cnt])
+			axs[i,j].axis('off')
+			cnt += 1
+	fig.savefig(save_path_profile)
+
+	gen_imgs = generated_image
+
+	fig, axs = pylab.subplots(r, c)
+	cnt = 0
+	for i in range(r):
+		for j in range(c):
+			axs[i,j].imshow(gen_imgs[cnt])
+			axs[i,j].axis('off')
+			cnt += 1
+	fig.savefig(save_gen_img_path)
+	pylab.close()
 
 def Learn_D(D_model, loss_criterion_id, loss_criterion_gan, optimizer_D, batch_image_front, gen_frontal_img, \
 				batch_id_label, batch_ones_label, batch_zeros_label, epoch, steps, Nd, args):
@@ -127,15 +164,28 @@ def Learn_D(D_model, loss_criterion_id, loss_criterion_gan, optimizer_D, batch_i
 def Learn_G(D_model, loss_criterion_emb, loss_criterion_sim, loss_criterion_id, loss_criterion_gan, optimizer_G , gen_profile_img, \
 				gen_frontal_img, gen_trans_feat, batch_image_profile, batch_image_front, batch_front_feats, \
 				batch_id_label, batch_ones_label, epoch, steps, Nd, args):
+	lamda_id = 0.003
+	lamda_gan = 0.05
+	lamda_sym = 0.3
 	syn_output=D_model(gen_frontal_img)
+	#make flip image
+	flip_gen_images = gen_frontal_img.cpu().data.numpy()
+	flip_gen_images = np.fliplr(flip_gen_images)
+	flip_gen_images = torch.FloatTensor(flip_gen_images.astype(float))
+	if args.cuda:
+		flip_gen_images = flip_gen_images.cuda()
 
+	flip_gen_images = Variable(flip_gen_images)
+
+	#calculate loss
+	L_sym = loss_criterion_sim(gen_frontal_img, flip_gen_images)
 	L_emb = loss_criterion_emb(batch_front_feats, gen_trans_feat, batch_ones_label)
 	#L_sim_AE = loss_criterion_sim(batch_image_profile, gen_profile_img)
 	L_sim_GAN = loss_criterion_sim(gen_frontal_img, batch_image_front)
 	L_id = loss_criterion_id(syn_output[:, :Nd], batch_id_label)
 	L_gan = loss_criterion_gan(syn_output[:, Nd], batch_ones_label)
 
-	g_loss = L_gan + L_id + L_sim_GAN  + L_emb
+	g_loss = lamda_gan*L_gan + lamda_id*L_id + L_sim_GAN  + lamda_id*L_emb + lamda_sym*L_sym
 
 	g_loss.backward()
 	optimizer_G.step()

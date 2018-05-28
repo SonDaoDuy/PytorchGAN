@@ -8,6 +8,7 @@ from sklearn import metrics
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
 from sklearn.metrics.pairwise import cosine_similarity
+from utils.log_result import log_result
 
 def load_meta_data(meta_file):
 	meta_data = dict()
@@ -72,7 +73,10 @@ def eval_roc(pair_file, meta_data, split):
 	return tar1, tar2
 
 
-def test_verify():
+def test_verify(save_dir):
+	save_dir = os.path.join(save_dir, 'Verification')
+	if not os.path.exists(save_dir):
+		os.makedirs(save_dir)
 	protocol_dir = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\dataset\\IJBA\\IJBA\\protocol_11'
 	align_img_dir = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\dataset\\IJBA\\IJBA\\align_image_11'
 	tar1s, tar2s = [],[]
@@ -102,9 +106,15 @@ def test_verify():
 		tar1, tar2 = eval_roc(pair_file, meta_data, split)
 		tar1s.append(tar1)
 		tar2s.append(tar2)
-		print('split {}, tar1: {}, tar2: {}'.format(split,tar1,tar2))
+		text = 'split {}, tar1: {}, tar2: {}'.format(split,tar1,tar2)
+		print(text)
+		log_result(text, save_dir)
 
-	print('tar1: {} +/- {}'.format(np.mean(tar1s), np.std(tar1s)))
-	print('tar2: {} +/- {}'.format(np.mean(tar2s), np.std(tar2s)))
+	text = 'tar1: {} +/- {}'.format(np.mean(tar1s), np.std(tar1s))
+	print(text)
+	log_result(text, save_dir)
+	text = 'tar2: {} +/- {}'.format(np.mean(tar2s), np.std(tar2s))
+	print(text)
+	log_result(text, save_dir)
 
 	return np.mean(tar1s), np.std(tar1s), np.mean(tar2s), np.std(tar2s)

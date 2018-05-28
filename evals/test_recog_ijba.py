@@ -6,6 +6,7 @@ from sklearn import metrics
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
 from sklearn.metrics.pairwise import cosine_similarity
+from utils.log_result import log_result
 
 def load_meta_data(meta_file, sub_dir):
 	meta_data = dict()
@@ -77,7 +78,10 @@ def eval_recog(probe_data, gallery_data):
 		tot_num += 1
 	return top1_num/tot_num, top5_num/tot_num
 
-def test_recog():
+def test_recog(save_dir):
+	save_dir = os.path.join(save_dir, 'Recognition')
+	if not os.path.exists(save_dir):
+		os.makedirs(save_dir)
 	protocol_dir = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\dataset\\IJBA\\IJBA\\protocol_1N'
 	align_img_dir = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\dataset\\IJBA\\IJBA\\align_image_1N'
 	split_num = 10
@@ -109,9 +113,16 @@ def test_recog():
 		top1, top5 = eval_recog(probe_data, gallery_data)
 		top1s.append(top1)
 		top5s.append(top5)
-		print('split {}, top1: {}, top5: {}'.format(split,top1,top5))
+		text = 'split {}, top1: {}, top5: {}'.format(split,top1,top5)
+		print(text)
+		log_result(text, save_dir)
 
-	print('top1: {} +/- {}'.format(np.mean(top1s), np.std(top1s)))
-	print('top5: {} +/- {}'.format(np.mean(top5s), np.std(top5s)))
+	text = 'top1: {} +/- {}'.format(np.mean(top1s), np.std(top1s))
+	print(text)
+	log_result(text, save_dir)
+
+	text = 'top5: {} +/- {}'.format(np.mean(top5s), np.std(top5s))
+	print(text)
+	log_result(text, save_dir)
 
 	return np.mean(top1s), np.std(top1s), np.mean(top5s), np.std(top5s)

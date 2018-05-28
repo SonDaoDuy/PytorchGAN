@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def main():
-	loss_file = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\snapshot\\Model_P\\2018-05-21_15-43-14\\Learning_Log.txt'
+	loss_file = 'C:\\Users\\duyson\\Desktop\\Projects\\FaceNormalize\\PytorchGAN\\snapshot\\Model_P\\cfp_split_08\\Learning_Log.txt'
 	D_loss, G_loss = [], []
 	with open(loss_file, 'r') as in_f:
 		for line in in_f:

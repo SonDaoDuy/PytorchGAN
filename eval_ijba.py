@@ -26,6 +26,7 @@ def parse_args():
 	parser.add_argument('-data_name', type=str, default='ijba', help='Name of evaluation dataset')
 	parser.add_argument('-data_place', type=str, default='./dataset', help='prepared data path to run program')
 	parser.add_argument('-model_dir', type=str, default='./snapshot', help='use multi image DR_GAN model')
+	parser.add_argument('-save_dir', type=str, default='./results/test_on_ijba', help='test result folder')
 
 	args = parser.parse_args()
 
@@ -78,14 +79,14 @@ def extract_feat(G_model, D_model, yaw_type, args):
 					input_img = Variable(input_img)
 					fixed_noise = Variable(fixed_noise)
 					#get output from model
-					# _, generated, _ = G_model(input_img, fixed_noise)
-					# output = D_model(generated)
-					# features = D_model.features
-					# output_data = features.cpu().data.numpy()
-					# output_size = features.size(0)
-					_, _, features = G_model(input_img, fixed_noise)
+					_, generated, _ = G_model(input_img, fixed_noise)
+					output = D_model(generated)
+					features = D_model.features
 					output_data = features.cpu().data.numpy()
 					output_size = features.size(0)
+					# _, _, features = G_model(input_img, fixed_noise)
+					# output_data = features.cpu().data.numpy()
+					# output_size = features.size(0)
 					# save feat to bin file
 					for j in range(output_size):
 						bin_f.write(st.pack('f'*feat_dim, *tuple(output_data[j,:])))
@@ -96,20 +97,23 @@ def main():
 	args = parse_args()
 	
 	infos = [
-	'./snapshot/Model_P/2018-05-21_15-43-14/epoch1000_G.pt',
-	'./snapshot/Model_P/2018-05-21_15-43-14/epoch1000_D.pt',
+	'./snapshot/Model_P/add_loss_param/epoch10_G.pt',
+	'./snapshot/Model_P/add_loss_param/epoch10_D.pt',
 	'nonli'
 	]
 
 	G_model_path, D_model_path, yaw_type = infos
+	model_name = G_model_path.split('/')[3]
+	args.save_dir = os.path.join(args.save_dir, 'Evaluate', model_name)
+
 	G_model = Model_P.Generator(50,3)
 	D_model = Model_P.Discriminator(500,3)
 	G_model = torch.load(G_model_path)
 	D_model = torch.load(D_model_path)
 	extract_feat(G_model, D_model, yaw_type, args)
 
-	test_recog()
-	test_verify()
+	test_recog(args.save_dir)
+	test_verify(args.save_dir)
 
 if __name__ == '__main__':
 	main()

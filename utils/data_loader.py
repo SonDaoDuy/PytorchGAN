@@ -106,29 +106,37 @@ class CaffeCrop(object):
 		res_img = mid_img.resize( (final_width, final_height) )
 		return res_img
 
-def make_pair_data(images_p, images_f, protocol_dir, pair_type):
+def make_pair_data(images_p, images_f, id_labels_p, final_front_pair, protocol_dir, pair_type, split):
 	split_num = 10
-	final_images_p, final_images_f = [], []
-
+	final_images_p, final_images_f, id_labels, final_front_feat = [], [], [], []
+	# index = list(range((split-1)*350, (split+1)*350))
+	# final_front_feat = final_front_pair[]
 	for split_id in range(split_num):
 		split_name = str(split_id + 1)
+		if (split_id + 1) == split:
+			continue
 		if len(split_name) < 2:
 			split_name = '0' + split_name
 		query_folder = os.path.join(protocol_dir, pair_type, split_name)
-		pair_front_img, pair_profile_img = \
-		load_image_pair(query_folder, images_f, images_p)
+		pair_front_img, pair_profile_img, ids, front_feat= \
+		load_image_pair(query_folder, images_f, images_p, id_labels_p, final_front_pair)
 
 		for j in range(len(pair_front_img)):
 			final_images_p.append(pair_profile_img[j])
 			final_images_f.append(pair_front_img[j])
+			id_labels.append(ids[j])
+			final_front_feat.append(front_feat[j])
 
-	final_images_p, final_images_f = np.array(final_images_p), np.array(final_images_f)
+	final_images_p, final_images_f, id_labels, final_front_feat = np.array(final_images_p), np.array(final_images_f), np.array(id_labels), np.array(final_front_feat)
+	id_labels = id_labels.astype('int64')
 
-	return final_images_p, final_images_f
+	return final_images_p, final_images_f, id_labels, final_front_feat
 
-def load_image_pair(query_folder, images_f, images_p):
+def load_image_pair(query_folder, images_f, images_p, id_labels_p, final_front_pair):
 	pair_front_img = []
 	pair_profile_img = []
+	id_labels = []
+	front_feat =[]
 
 	pair_file = 'same.txt'
 	full_pair_file = os.path.join(query_folder, pair_file)
@@ -137,9 +145,11 @@ def load_image_pair(query_folder, images_f, images_p):
 			record = line.strip().split(',')
 			pair1, pair2 = int(record[0]), int(record[1])
 			pair_front_img.append(images_f[pair1 - 1])
+			front_feat.append(final_front_pair[pair1 - 1])
 			pair_profile_img.append(images_p[pair2 - 1])
+			id_labels.append(id_labels_p[pair2 - 1])
 
-	return pair_front_img, pair_profile_img
+	return pair_front_img, pair_profile_img, id_labels, front_feat
 
 def data_loader_ijba(data_place, img_list_file):
 	imgs = []
@@ -161,7 +171,7 @@ def data_loader_ijba(data_place, img_list_file):
 		img = caffe_crop(img)
 		img = np.array(img)
 		img = rsz(img)
-		images[count] == img
+		images[count] = img
 		count += 1
 
 	#[0,255] -> [-1,1]
@@ -200,7 +210,7 @@ def data_loader(data_place, model_type):
 		id_labels = np.zeros(5000)
 	elif model_type == 'Profile':
 		images = np.zeros((2000,110,110,3))
-		id_labels = np.zeros(5000)
+		id_labels = np.zeros(2000)
 
 	count = 0
 
